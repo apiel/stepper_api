@@ -12,8 +12,11 @@ Stepper myStepper(stepsPerRevolution, 14, 12, 13, 15); // d 5,6,7.8 // in1,3,2,4
 // Stepper myStepper(stepsPerRevolution, 5, 4, 14, 12); // d 1,2,5,6 // in1,3,2,4
 
 int loopCounter = 0;
+int direction = 1;
 
 void handleUp() {
+  direction = 1;
+  loopCounter = 1;
   if (server.hasArg("count")) {
     loopCounter = server.arg("count").toInt();
   }
@@ -21,6 +24,8 @@ void handleUp() {
 }
 
 void handleDown() {
+  direction = -1;
+  loopCounter = 1;
   if (server.hasArg("count")) {
     loopCounter = server.arg("count").toInt();
   }
@@ -32,13 +37,21 @@ void handleStop() {
   server.send(200, "text/plain", "stop");
 }
 
+void handleNotFound() {
+  server.send(404, "text/plain", "No route");
+}
+
 void setup() {
   myStepper.setSpeed(50);
   Serial.begin(115200);
 
-  IPAddress ip(192,168,0,69);
+  //IPAddress gateway(192,168,0,1); 
+  //IPAddress subnet(255,255,255,0);
+  //IPAddress ip(192,168,0,69);
+  //WiFi.config(local_ip, gateway, subnet);
+  
   WiFi.mode(WIFI_STA);
-  WiFi.begin(MYWIFISSID, MYWIFIPASSWORD, ip);
+  WiFi.begin(MYWIFISSID, MYWIFIPASSWORD);
   Serial.println("");
 
   // Wait for connection
@@ -56,13 +69,16 @@ void setup() {
   server.on("/up", handleUp);
   server.on("/down", handleDown);
   server.on("/stop", handleStop);
+  server.onNotFound(handleNotFound);
+  server.begin();
   Serial.println("HTTP server started");
-  
-  myStepper.step(-stepsPerRevolution);
 }
 
 void loop() {
-  //myStepper.step(-stepsPerRevolution);
-  //delay(500);
   server.handleClient();
+  if (loopCounter > 0) {
+    myStepper.step(stepsPerRevolution*direction);
+    loopCounter--;
+  }
+  delay(1);
 }
